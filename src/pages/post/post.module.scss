@@ -1,1 +1,37 @@
-// TODO
+.banner {
+  height: 25rem;
+  width: 100%;
+  object-fit: cover;
+}
+
+
+.postHeader {
+  margin-top: 3.75rem;
+
+  h1 {
+    display: block;
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--heading);
+
+  }
+}
+
+.article {
+
+  margin-top: 3rem;
+  line-height: 2rem;
+  font-size: 1.125rem;
+
+  p, ul, h2 {
+    margin: 1.5rem 0;
+  }
+
+  ul {
+    padding-left: 1.5rem;
+
+    li {
+      margin: 0.5rem 0;
+    }
+  }
+}

@@ -1,1 +1,24 @@
-// TODO
+.centered {
+  max-width: 47.75rem;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.info {
+  list-style: none;
+  margin-top: 1.5rem;
+  display: flex;
+  color: var(--info);
+
+  li {
+    font-size: 0.875rem;
+
+    svg {
+      margin-right: 0.5rem;
+    }
+
+    & + li {
+      margin-left: 1.5rem;
+    }
+  }
+}
