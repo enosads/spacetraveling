@@ -13,12 +13,18 @@
     font-size: 3rem;
     font-weight: 700;
     color: var(--heading);
+  }
 
+  span {
+    margin-top: 1rem;
+    display: block;
+    font-style: italic;
+    font-size: 0.875rem;
+    color: var(--info);
   }
 }
 
 .article {
-
   margin-top: 3rem;
   line-height: 2rem;
   font-size: 1.125rem;
@@ -33,5 +39,35 @@
     li {
       margin: 0.5rem 0;
     }
+  }
+}
+
+.navigation {
+  display: flex;
+  align-items: center;
+  border-top: 1px solid rgba(215, 215, 215, 0.1);
+
+  span {
+    max-width: 300px;
+    display: block;
+    line-height: 1.25rem;
+    font-size: 1.125rem;
+    font-weight: 400;
+    color: var(--heading);
+    margin-bottom: 0.5rem;
+  }
+
+  a {
+    color: var(--highlight);
+    font-weight: 600;
+  }
+
+  div {
+    padding-top: 3rem;
+  }
+
+  .next {
+    margin-left: auto;
+    text-align: right;
   }
 }

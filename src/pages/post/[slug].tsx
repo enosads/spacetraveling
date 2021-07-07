@@ -10,8 +10,11 @@ import {RichText} from "prismic-dom";
 import {format} from "date-fns";
 import ptBR from "date-fns/locale/pt-BR";
 import {useRouter} from "next/router";
+import Link from "next/link";
+import Comments from "../../components/Comments";
 
 interface Post {
+  last_publication_date: string | null;
   first_publication_date: string | null;
   data: {
     title: string;
@@ -28,13 +31,22 @@ interface Post {
   };
 }
 
-interface PostProps {
-  post: Post;
+interface PostLink {
+  uid: string;
+  title: string;
 }
 
-export default function Post({post}: PostProps) {
+interface PostProps {
+  post: Post;
+  nextPost: PostLink;
+  previousPost: PostLink;
+  preview: boolean;
+}
 
-  post.first_publication_date = format(
+export default function Post({post, previousPost, nextPost, preview}: PostProps) {
+  const isPostEdited = post.first_publication_date !== post.last_publication_date;
+
+  post.first_publication_date = post.first_publication_date && format(
     new Date(post.first_publication_date),
     'dd MMM yyyy',
     {
@@ -42,12 +54,21 @@ export default function Post({post}: PostProps) {
     }
   );
 
-  const wordsAmount = post.data.content.reduce((total, contentItem) => {
-    total += contentItem.heading.split(' ').length
+  let editionDate;
+  if (isPostEdited) {
+    editionDate = format(
+      new Date(post.last_publication_date),
+      "'* editado em' dd MMM yyyy', às' H':'m",
+      {
+        locale: ptBR
+      }
+    )
+  }
 
-    const words = contentItem.body.map(item => item.text.split(' ').length)
+  const wordsAmount = post.data.content.reduce((total, section) => {
+    total += section.heading.split(' ').length
+    const words = section.body.map(item => item.text.split(' ').length)
     words.map(word => (total += word))
-
     return total
   }, 0);
   const readTime = Math.ceil(wordsAmount / 200);
@@ -74,7 +95,9 @@ export default function Post({post}: PostProps) {
             <ul className={commonStyles.info}>
               <li>
                 <FiCalendar/>
-                {post.first_publication_date}
+                {post.first_publication_date ?
+                  post.first_publication_date :
+                  'Não publicado'}
               </li>
               <li>
                 <FiUser/>
@@ -85,6 +108,7 @@ export default function Post({post}: PostProps) {
                 {readTime} min
               </li>
             </ul>
+            {isPostEdited && <span>{editionDate}</span>}
           </div>
           {post.data.content.map(content => {
             return (
@@ -97,6 +121,33 @@ export default function Post({post}: PostProps) {
             )
           })}
 
+          <div className={`${styles.navigation}`}>
+            {previousPost &&
+            <div>
+              <span>{previousPost.title}</span>
+              <Link href={`/post/${previousPost.uid}`}>
+                <a>Post anterior</a>
+              </Link>
+            </div>
+            }
+
+            {nextPost &&
+            <div className={styles.next}>
+              <span>{nextPost.title}</span>
+              <Link href={`/post/${nextPost.uid}`}>
+                <a>Próximo post</a>
+              </Link>
+            </div>
+            }
+          </div>
+          <Comments/>
+          {preview && (
+            <aside className={commonStyles.preview}>
+              <Link href="/api/exit-preview">
+                <a>Sair do modo Preview</a>
+              </Link>
+            </aside>
+          )}
         </div>
       </main>
     </>
@@ -127,6 +178,7 @@ function parsePost(response) {
   return {
     uid: response.uid,
     first_publication_date: response.first_publication_date,
+    last_publication_date: response.last_publication_date,
     data: {
       title: response.data.title,
       subtitle: response.data.subtitle,
@@ -144,16 +196,52 @@ function parsePost(response) {
   }
 }
 
-export const getStaticProps: GetStaticProps = async (context) => {
-  const prismic = getPrismicClient();
-  const {slug} = context.params;
-  const response = await prismic.getByUID('posts', String(slug), {});
 
-  const post = parsePost(response);
+function parsePostLink(response): PostLink | null {
+  if (response) {
+    return {
+      uid: response.uid,
+      title: response.data.title,
+    }
+  }
+  return null;
+}
+
+export const getStaticProps = async (
+  {
+    params,
+    preview = false,
+    previewData
+  }) => {
+  const prismic = getPrismicClient();
+  const {slug} = params;
+  let postId;
+  const post = await prismic.getByUID('posts', String(slug), {
+    ref: previewData?.ref || null,
+  }).then(response => {
+    postId = response.id;
+    return parsePost(response);
+  });
+
+  const previousPost = await prismic.query(
+    Prismic.predicates.at('document.type', 'posts'),
+    {pageSize: 1, after: `${postId}`, orderings: '[document.first_publication_date]'})
+    .then(response => response.results[0])
+    .then(parsePostLink);
+
+  const nextPost = await prismic.query(
+    Prismic.predicates.at('document.type', 'posts'),
+    {pageSize: 1, after: `${postId}`, orderings: '[document.first_publication_date desc]'})
+    .then(response => response.results[0])
+    .then(parsePostLink);
 
   return {
-    props: {post},
+    props: {
+      post,
+      nextPost,
+      previousPost,
+      preview
+    },
     revalidate: 60 * 60 * 24 // 24 hours
   }
-
 };

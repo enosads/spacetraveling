@@ -29,13 +29,14 @@ interface PostPagination {
 
 interface HomeProps {
   postsPagination: PostPagination;
+  preview: boolean
 }
 
-export default function Home({postsPagination}: HomeProps) {
+export default function Home({postsPagination, preview}: HomeProps) {
   const formattedPost = postsPagination.results.map(post => {
     return {
       ...post,
-      first_publication_date: format(
+      first_publication_date: post.first_publication_date && format(
         new Date(post.first_publication_date),
         'dd MMM yyyy',
         {
@@ -59,17 +60,18 @@ export default function Home({postsPagination}: HomeProps) {
     }
 
     async function fetchPostOfNextPage() {
-      const fetchedPosts = await fetch<PostPagination>(postsPagination.next_page)
+      const fetchedPosts = await fetch<PostPagination>(nextPage)
         .then(response => response.json());
 
       const formattedPosts = fetchedPosts.results.map(post => {
-        post.first_publication_date = format(
+        post.first_publication_date = post.first_publication_date && format(
           new Date(post.first_publication_date),
           'dd MMM yyyy', {
             locale: ptBR
           });
         return post;
       })
+      console.log(nextPage)
       setPosts([...posts, ...formattedPosts]);
       setNextPage(fetchedPosts.next_page);
     }
@@ -91,7 +93,11 @@ export default function Home({postsPagination}: HomeProps) {
                 <ul className={commonStyles.info}>
                   <li>
                     <FiCalendar/>
-                    <time>{post.first_publication_date}</time>
+                    <time>
+                      {post.first_publication_date ?
+                        post.first_publication_date :
+                        'Não publicado'}
+                    </time>
                   </li>
                   <li>
                     <FiUser/>
@@ -107,6 +113,13 @@ export default function Home({postsPagination}: HomeProps) {
             </button>
           )}
         </main>
+        {preview && (
+          <aside className={commonStyles.preview}>
+            <Link href="/api/exit-preview">
+              <a>Sair do modo Preview</a>
+            </Link>
+          </aside>
+        )}
       </div>
     </>
   );
@@ -126,12 +139,17 @@ function parsePosts(postsResponse: ApiSearchResponse): Post[] {
   });
 }
 
-export const getStaticProps: GetStaticProps = async () => {
+export const getStaticProps: GetStaticProps<HomeProps> = async (
+  {
+    preview = false,
+    previewData
+  }) => {
   const prismic = getPrismicClient();
   const postsResponse = await prismic.query([
       Prismic.predicates.at('document.type', 'posts'),
     ],
     {
+      ref: previewData?.ref ?? null,
       pageSize: 1
     }
   );
@@ -143,8 +161,10 @@ export const getStaticProps: GetStaticProps = async () => {
       postsPagination: {
         results: posts,
         next_page: postsResponse.next_page
-      }
+      },
+      preview
     },
+
     revalidate: 60 * 60 * 24 // 24 hours
   }
 };
